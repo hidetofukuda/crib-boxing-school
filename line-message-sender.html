@@ -122,14 +122,11 @@
     <div class="container">
         <h1>LINE メッセージ送信</h1>
 
-        <!-- 即座送信 -->
+        <!-- 月次スケジュール送信 -->
         <div class="section">
-            <h2>即座送信</h2>
-            <div class="form-group">
-                <label for="immediateMessage">メッセージ:</label>
-                <textarea id="immediateMessage" placeholder="送信するメッセージを入力してください"></textarea>
-            </div>
-            <button onclick="sendImmediateMessage()">即座に送信</button>
+            <h2>月次スケジュール送信</h2>
+            <p>調整さんを作成して、スケジュール確認メッセージを送信します。</p>
+            <button onclick="sendMonthlySchedule()">今すぐ月次スケジュール送信</button>
             <div id="immediateResult" class="result"></div>
         </div>
 
@@ -168,7 +165,7 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://xxnwwu197k.execute-api.ap-northeast-1.amazonaws.com/prod/api/line';
+        const API_BASE_URL = 'https://a7ximjzl5a.execute-api.ap-northeast-1.amazonaws.com/prod/api/line';
 
         function showResult(elementId, message, isSuccess = true) {
             const resultElement = document.getElementById(elementId);
@@ -191,30 +188,23 @@
             }, 2000);
         }
 
-        async function sendImmediateMessage() {
-            const message = document.getElementById('immediateMessage').value.trim();
+        async function sendMonthlySchedule() {
             const button = event.target;
             const originalText = button.textContent;
-            
-            if (!message) {
-                showResult('immediateResult', 'メッセージを入力してください', false);
-                return;
-            }
 
             disableButton(button, originalText);
 
             try {
-                const response = await fetch(`${API_BASE_URL}/send`, {
+                const response = await fetch('https://xxnwwu197k.execute-api.ap-northeast-1.amazonaws.com/prod/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ message: message })
+                    body: JSON.stringify({})
                 });
 
                 if (response.ok) {
-                    showResult('immediateResult', 'メッセージが正常に送信されました！');
-                    document.getElementById('immediateMessage').value = '';
+                    showResult('immediateResult', '月次スケジュールが正常に送信されました！');
                 } else {
                     throw new Error(`HTTP ${response.status}`);
                 }
