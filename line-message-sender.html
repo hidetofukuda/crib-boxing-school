@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LINE メッセージ送信</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #06c755;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="text"], 
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        button {
+            background-color: #06c755;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #05b048;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .bulk-messages {
+            margin-bottom: 15px;
+        }
+        .message-input {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .message-input input {
+            flex: 1;
+            margin-right: 10px;
+        }
+        .remove-btn {
+            background-color: #dc3545;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        .remove-btn:hover {
+            background-color: #c82333;
+        }
+        .add-message-btn {
+            background-color: #007bff;
+            margin-bottom: 15px;
+        }
+        .add-message-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LINE メッセージ送信</h1>
+
+        <!-- 即座送信 -->
+        <div class="section">
+            <h2>即座送信</h2>
+            <div class="form-group">
+                <label for="immediateMessage">メッセージ:</label>
+                <textarea id="immediateMessage" placeholder="送信するメッセージを入力してください"></textarea>
+            </div>
+            <button onclick="sendImmediateMessage()">即座に送信</button>
+            <div id="immediateResult" class="result"></div>
+        </div>
+
+        <!-- 遅延送信 -->
+        <div class="section">
+            <h2>遅延送信</h2>
+            <div class="form-group">
+                <label for="delayMessage">メッセージ:</label>
+                <textarea id="delayMessage" placeholder="送信するメッセージを入力してください"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="delaySeconds">遅延時間（秒）:</label>
+                <input type="number" id="delaySeconds" value="300" min="1">
+            </div>
+            <button onclick="sendDelayedMessage()">遅延送信をスケジュール</button>
+            <div id="delayResult" class="result"></div>
+        </div>
+
+        <!-- バルク送信 -->
+        <div class="section">
+            <h2>バルク送信</h2>
+            <div id="bulkMessages" class="bulk-messages">
+                <div class="message-input">
+                    <input type="text" placeholder="メッセージ 1" class="bulk-message-input">
+                    <button class="remove-btn" onclick="removeMessage(this)">削除</button>
+                </div>
+                <div class="message-input">
+                    <input type="text" placeholder="メッセージ 2" class="bulk-message-input">
+                    <button class="remove-btn" onclick="removeMessage(this)">削除</button>
+                </div>
+            </div>
+            <button class="add-message-btn" onclick="addMessage()">メッセージを追加</button>
+            <button onclick="sendBulkMessages()">バルク送信</button>
+            <div id="bulkResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://xxnwwu197k.execute-api.ap-northeast-1.amazonaws.com/prod/api/line';
+
+        function showResult(elementId, message, isSuccess = true) {
+            const resultElement = document.getElementById(elementId);
+            resultElement.textContent = message;
+            resultElement.className = `result ${isSuccess ? 'success' : 'error'}`;
+            resultElement.style.display = 'block';
+            
+            setTimeout(() => {
+                resultElement.style.display = 'none';
+            }, 5000);
+        }
+
+        function disableButton(button, originalText) {
+            button.disabled = true;
+            button.textContent = '送信中...';
+            
+            setTimeout(() => {
+                button.disabled = false;
+                button.textContent = originalText;
+            }, 2000);
+        }
+
+        async function sendImmediateMessage() {
+            const message = document.getElementById('immediateMessage').value.trim();
+            const button = event.target;
+            const originalText = button.textContent;
+            
+            if (!message) {
+                showResult('immediateResult', 'メッセージを入力してください', false);
+                return;
+            }
+
+            disableButton(button, originalText);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                if (response.ok) {
+                    showResult('immediateResult', 'メッセージが正常に送信されました！');
+                    document.getElementById('immediateMessage').value = '';
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                showResult('immediateResult', `送信に失敗しました: ${error.message}`, false);
+            }
+        }
+
+        async function sendDelayedMessage() {
+            const message = document.getElementById('delayMessage').value.trim();
+            const delaySeconds = parseInt(document.getElementById('delaySeconds').value);
+            const button = event.target;
+            const originalText = button.textContent;
+            
+            if (!message) {
+                showResult('delayResult', 'メッセージを入力してください', false);
+                return;
+            }
+
+            if (delaySeconds < 1) {
+                showResult('delayResult', '遅延時間は1秒以上を指定してください', false);
+                return;
+            }
+
+            disableButton(button, originalText);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/schedule`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        message: message,
+                        delaySeconds: delaySeconds
+                    })
+                });
+
+                if (response.ok) {
+                    showResult('delayResult', `遅延送信がスケジュールされました（${delaySeconds}秒後）！`);
+                    document.getElementById('delayMessage').value = '';
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                showResult('delayResult', `スケジュールに失敗しました: ${error.message}`, false);
+            }
+        }
+
+        async function sendBulkMessages() {
+            const messageInputs = document.querySelectorAll('.bulk-message-input');
+            const messages = Array.from(messageInputs)
+                .map(input => input.value.trim())
+                .filter(message => message !== '');
+            const button = event.target;
+            const originalText = button.textContent;
+            
+            if (messages.length === 0) {
+                showResult('bulkResult', '最低1つのメッセージを入力してください', false);
+                return;
+            }
+
+            disableButton(button, originalText);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/bulk`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ messages: messages })
+                });
+
+                if (response.ok) {
+                    showResult('bulkResult', `${messages.length}件のメッセージが正常に送信されました！`);
+                    messageInputs.forEach(input => input.value = '');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                showResult('bulkResult', `バルク送信に失敗しました: ${error.message}`, false);
+            }
+        }
+
+        function addMessage() {
+            const bulkMessages = document.getElementById('bulkMessages');
+            const messageCount = bulkMessages.children.length + 1;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message-input';
+            messageDiv.innerHTML = `
+                <input type="text" placeholder="メッセージ ${messageCount}" class="bulk-message-input">
+                <button class="remove-btn" onclick="removeMessage(this)">削除</button>
+            `;
+            
+            bulkMessages.appendChild(messageDiv);
+        }
+
+        function removeMessage(button) {
+            const bulkMessages = document.getElementById('bulkMessages');
+            if (bulkMessages.children.length > 1) {
+                button.parentElement.remove();
+            } else {
+                showResult('bulkResult', '最低1つのメッセージフィールドが必要です', false);
+            }
+        }
+    </script>
+</body>
+</html>
