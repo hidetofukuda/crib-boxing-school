@@ -192,6 +192,14 @@
             const button = event.target;
             const originalText = button.textContent;
 
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            
+            if (!confirm(`${year}年${month}月の月次スケジュール送信を実行しますか？`)) {
+                return;
+            }
+
             disableButton(button, originalText);
 
             try {
@@ -226,6 +234,10 @@
 
             if (delaySeconds < 1) {
                 showResult('delayResult', '遅延時間は1秒以上を指定してください', false);
+                return;
+            }
+
+            if (!confirm(`${delaySeconds}秒後に「${message}」を送信しますか？`)) {
                 return;
             }
 
@@ -264,6 +276,11 @@
             
             if (messages.length === 0) {
                 showResult('bulkResult', '最低1つのメッセージを入力してください', false);
+                return;
+            }
+
+            const messageList = messages.map(msg => `・${msg}`).join('\n');
+            if (!confirm(`以下の${messages.length}件のメッセージを送信しますか？\n\n${messageList}`)) {
                 return;
             }
 
